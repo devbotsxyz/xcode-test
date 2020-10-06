@@ -9,7 +9,7 @@ This Action tests an Xcode project.
 For simple projects where there is one scheme, invoking `xcode-archive` can be as simple as this:
 
 ```yaml
-- name: "Archive"
+- name: "Test"
   uses: devbotsxyz/xcode-test@v1
 ```
 
