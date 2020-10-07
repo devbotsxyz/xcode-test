@@ -38,10 +38,23 @@ inputs:
   configuration:
     description: 'Configuration'
     required: false
+  destination:
+    description: 'Destination'
+    required: false
+  sdk:
+    description: 'SDK'
+    required: false
+  arch:
+    description: 'Architecture'
+    required: false
 
   code-sign-identity:
     description: 'Code sign identity'
     required: false
+  development-team:
+    description: 'Development team ID'
+    required: false
+
   constraints:
     description: 'What tests to run or skip'
     required: false

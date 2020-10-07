@@ -23,6 +23,7 @@ const core = require('@actions/core');
 const execa = require('execa');
 
 const parseConstraints = require('./constraints');
+const { parseDestination, encodeDestinationOption } = require('./destinations');
 
 
 const getProjectInfo = async ({workspace, project}) => {
@@ -41,26 +42,54 @@ const getProjectInfo = async ({workspace, project}) => {
 };
 
 
-const testProject = async ({scheme = "", codeSignIdentity = "", constraints = [], language = "", region = ""} = {}) => {
-    let buildSettings = []
-    if (codeSignIdentity != "") {
-        buildSettings.push(`CODE_SIGN_IDENTITY=${codeSignIdentity}`);
+const testProject = async ({workspace, project, scheme, configuration, sdk, arch, destination, codeSignIdentity, developmentTeam, constraints = [], language = "", region = ""} = {}) => {
+    let options = []
+    if (workspace != "") {
+        options.push("-workspace", workspace);
+    }
+    if (project != "") {
+        options.push("-project", project);
+    }
+    if (scheme != "") {
+        options.push("-scheme", scheme);
+    }
+    if (configuration != "") {
+        options.push("-configuration", configuration);
+    }
+    if (destination != "") {
+        options.push("-destination", encodeDestinationOption(destination) );
+    }
+    if (sdk != "") {
+        options.push("-sdk", sdk);
+    }
+    if (arch != "") {
+        options.push("-arch", arch);
     }
 
-    let testSettings = []
+    let buildOptions = []
+    if (codeSignIdentity != "") {
+        buildOptions.push(`CODE_SIGN_IDENTITY=${codeSignIdentity}`);
+    }
+    if (developmentTeam != "") {
+        buildOptions.push(`DEVELOPMENT_TEAM=${developmentTeam}`);
+    }
+
+    let testOptions = []
     if (constraints != []) {
-        testSettings = [...testSettings, ...constraints];
+        testOptions = [...testOptions, ...constraints];
     }
 
     if (language != "") {
-        testSettings = [...testSettings, '-testLanguage', language];
+        testOptions = [...testOptions, '-testLanguage', language];
     }
 
     if (region != "") {
-        testSettings = [...testSettings, '-testRegion', region];
+        testOptions = [...testOptions, '-testRegion', region];
     }
 
-    const xcodebuild = execa('xcodebuild', ['-scheme', scheme, 'test', ...testSettings, ...buildSettings], {
+    console.log("EXECUTING:", 'xcodebuild', [...options, 'build', ...buildOptions]);
+
+    const xcodebuild = execa('xcodebuild', [...options, 'test', ...testOptions, ...buildOptions], {
         reject: false,
         env: {"NSUnbufferedIO": "YES"},
     });
@@ -81,11 +110,19 @@ const parseConfiguration = async () => {
         project: core.getInput("project"),
         scheme: core.getInput("scheme"),
         configuration: core.getInput("configuration"),
+        sdk: core.getInput("sdk"),
+        arch: core.getInput("arch"),
+        destination: core.getInput("destination"),
         codeSignIdentity: core.getInput('code-sign-identity'),
+        developmentTeam: core.getInput('development-team'),
         constraints: parseConstraints(core.getInput('constraints')),
         language: "",
         region: "",
     };
+
+    if (configuration.destination !== "") {
+        configuration.destination = parseDestination(configuration.destination);
+    }
 
     if (configuration.scheme === "") {
         const projectInfo = await getProjectInfo(configuration);
