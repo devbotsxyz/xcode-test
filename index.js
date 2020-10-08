@@ -19,7 +19,11 @@
 // SOFTWARE.
 
 
+const path = require('path');
+const fs = require('fs');
+
 const core = require('@actions/core');
+const artifact = require('@actions/artifact');
 const execa = require('execa');
 
 const parseConstraints = require('./constraints');
@@ -42,7 +46,7 @@ const getProjectInfo = async ({workspace, project}) => {
 };
 
 
-const testProject = async ({workspace, project, scheme, configuration, sdk, arch, destination, codeSignIdentity, developmentTeam, constraints = [], language = "", region = ""} = {}) => {
+const testProject = async ({workspace, project, scheme, configuration, sdk, arch, destination, codeSignIdentity, developmentTeam, constraints, language, region, resultBundlePath}) => {
     let options = []
     if (workspace != "") {
         options.push("-workspace", workspace);
@@ -67,24 +71,28 @@ const testProject = async ({workspace, project, scheme, configuration, sdk, arch
     }
 
     let buildOptions = []
-    if (codeSignIdentity != "") {
+    if (codeSignIdentity !== "") {
         buildOptions.push(`CODE_SIGN_IDENTITY=${codeSignIdentity}`);
     }
-    if (developmentTeam != "") {
+    if (developmentTeam !== "") {
         buildOptions.push(`DEVELOPMENT_TEAM=${developmentTeam}`);
     }
 
     let testOptions = []
-    if (constraints != []) {
+    if (constraints !== "") {
         testOptions = [...testOptions, ...constraints];
     }
 
-    if (language != "") {
+    if (language !== "") {
         testOptions = [...testOptions, '-testLanguage', language];
     }
 
-    if (region != "") {
+    if (region !== "") {
         testOptions = [...testOptions, '-testRegion', region];
+    }
+
+    if (resultBundlePath !== "") {
+        testOptions = [...testOptions, '-resultBundlePath', resultBundlePath];
     }
 
     console.log("EXECUTING:", 'xcodebuild', [...options, 'build', ...buildOptions]);
@@ -118,6 +126,8 @@ const parseConfiguration = async () => {
         constraints: parseConstraints(core.getInput('constraints')),
         language: "",
         region: "",
+        resultBundlePath: core.getInput("result-bundle-path"),
+        resultBundleName: core.getInput("result-bundle-name"),
     };
 
     if (configuration.destination !== "") {
@@ -141,14 +151,56 @@ const parseConfiguration = async () => {
         configuration.region = core.getInput('region');
     }
 
+    // TODO Validate the resultBundlePath
+
     return configuration;
 }
+
+
+const archiveResultBundle = async (resultBundlePath) => {
+    const archivePath = resultBundlePath + ".zip";
+
+    const args = [
+        "-c",             // Create an archive at the destination path
+        "-k",             // Create a PKZip archive
+        "--keepParent",   // Embed the parent directory name src in dst_archive.
+        resultBundlePath, // Source
+        archivePath,      // Destination
+    ];
+
+    try {
+        await execa("ditto", args);
+    } catch (error) {
+        core.error(error);
+        return null;
+    }
+
+    return archivePath;
+};
+
+
+const uploadResultBundleArtifact = async (resultBundleArchivePath, resultBundleName) => {
+    const artifactClient = artifact.create()
+    const uploadResult = await artifactClient.uploadArtifact(
+        resultBundleName,
+        [resultBundleArchivePath],
+        path.dirname(resultBundleArchivePath)
+    )
+};
 
 
 const main = async () => {
     try {
         const configuration = await parseConfiguration();
+
+        // Run xcodebuild test
         await testProject(configuration);
+
+        // Upload the results bundle as an artifact
+        if (configuration.resultBundlePath !== "" && fs.existsSync(configuration.resultBundlePath)) {
+            const resultBundleArchivePath = await archiveResultBundle(configuration.resultBundlePath);
+            await uploadResultBundleArtifact(resultBundleArchivePath, configuration.resultBundleName);
+        }
     } catch (err) {
         core.setFailed(`Testing failed with an unexpected error: ${err.message}`);
     }
