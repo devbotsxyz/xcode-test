@@ -55,6 +55,14 @@ inputs:
     description: 'Development team ID'
     required: false
 
+  result-bundle-path:
+    description: "Path of the .xcresult bundle"
+    required: false
+  result-bundle-name:
+    description: "Name of uploaded .xcresult artifact"
+    required: false
+    default: "Test Results"
+
   constraints:
     description: 'What tests to run or skip'
     required: false
@@ -67,6 +75,10 @@ inputs:
   locale:
     description: 'The locale identifier ([language]_[region]) in which to run the tests'
     required: false
+
+outputs:
+  result-bundle-path:
+    description: "Path of the .xcresult bundle"
 
 runs:
   using: 'node12'
