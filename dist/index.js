@@ -250,7 +250,7 @@ const testProject = async ({workspace, project, scheme, configuration, sdk, arch
     xcodebuild.stderr.pipe(process.stderr);
 
     let {exitCode} = await xcodebuild;
-    if (exitCode != 0 && exitCode != 65) {
+    if (exitCode != 0) { // TODO What about exit status 65?
         throw Error(`xcodebuild test failed with unexpected exit code ${exitCode}`);
     }
 };
