@@ -48,10 +48,22 @@ inputs:
     description: 'Architecture'
     required: false
 
-  code-sign-identity:
-    description: 'Code sign identity'
+  CODE_SIGN_IDENTITY:
+    description: ''
     required: false
-  development-team:
+    default: "<<undefined>>"
+  CODE_SIGNING_REQUIRED:
+    description: ''
+    required: false
+  CODE_SIGN_ENTITLEMENTS:
+    description: ''
+    required: false
+    default: "<<undefined>>"
+  CODE_SIGNING_ALLOWED:
+    description: ''
+    required: false
+  
+  DEVELOPMENT_TEAM:
     description: 'Development team ID'
     required: false
 

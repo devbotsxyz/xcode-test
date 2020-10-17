@@ -30,6 +30,37 @@ const parseConstraints = require('./constraints');
 const { parseDestination, encodeDestinationOption } = require('./destinations');
 
 
+// TODO This also lives in xcode-build - time to refactor into a package
+const getOptionalInput = (name) => {
+    const val = process.env[`INPUT_${name.replace(/ /g, '_').toUpperCase()}`];
+    if (val !== undefined && val !== "" && val !== "<<undefined>>") {
+        return val.trim();
+    }
+};
+
+const getOptionalBooleanInput = (name) => {
+    let value = getOptionalInput(name);
+    if (value !== undefined) {
+        value = value.toLowerCase();
+        if (value !== 'true' && value !== 'false') {
+            throw new Error(`Optional input <${name}> only accepts true or false. Got <${value}>.`);
+        }
+        return value;
+    }
+};
+
+const getOptionalYesNoInput = (name) => {
+    let value = getOptionalInput(name);
+    if (value !== undefined) {
+        value = value.toUpperCase();
+        if (value !== 'YES' && value !== 'NO') {
+            throw new Error(`Optional input <${name}> only accepts yes or no. Got <${value}>.`);
+        }
+        return value;
+    }
+};
+
+
 const getProjectInfo = async ({workspace, project}) => {
     const options = [];
     if (workspace != "") {
@@ -46,7 +77,7 @@ const getProjectInfo = async ({workspace, project}) => {
 };
 
 
-const testProject = async ({workspace, project, scheme, configuration, sdk, arch, destination, codeSignIdentity, developmentTeam, constraints, language, region, resultBundlePath}) => {
+const testProject = async ({workspace, project, scheme, configuration, sdk, arch, destination, disableCodeSigning, codeSignIdentity, codeSigningRequired, codeSignEntitlements, codeSigningAllowed, developmentTeam, constraints, language, region, resultBundlePath}) => {
     let options = []
     if (workspace != "") {
         options.push("-workspace", workspace);
@@ -70,15 +101,10 @@ const testProject = async ({workspace, project, scheme, configuration, sdk, arch
         options.push("-arch", arch);
     }
 
-    let buildOptions = []
-    if (codeSignIdentity !== "") {
-        buildOptions.push(`CODE_SIGN_IDENTITY=${codeSignIdentity}`);
-    }
-    if (developmentTeam !== "") {
-        buildOptions.push(`DEVELOPMENT_TEAM=${developmentTeam}`);
-    }
+    // Test Specific Options
 
     let testOptions = []
+
     if (constraints !== "") {
         testOptions = [...testOptions, ...constraints];
     }
@@ -94,10 +120,46 @@ const testProject = async ({workspace, project, scheme, configuration, sdk, arch
     if (resultBundlePath !== "") {
         testOptions = [...testOptions, '-resultBundlePath', resultBundlePath];
     }
+    
+    // Build Settings
 
-    console.log("EXECUTING:", 'xcodebuild', [...options, 'build', ...buildOptions]);
+    let buildSettings = []
 
-    const xcodebuild = execa('xcodebuild', [...options, 'test', ...testOptions, ...buildOptions], {
+    if (disableCodeSigning === "true") {
+        buildSettings.push('CODE_SIGN_IDENTITY=""');
+        buildSettings.push('CODE_SIGNING_REQUIRED="NO"');
+        buildSettings.push('CODE_SIGN_ENTITLEMENTS=""');
+        buildSettings.push('CODE_SIGNING_ALLOWED="NO"');    
+    } else {
+        if (codeSignIdentity !== undefined) {
+            buildSettings.push(`CODE_SIGN_IDENTITY=${codeSignIdentity}`);
+        }
+        if (codeSigningRequired !== undefined) {
+            if (codeSigningRequired === "true") {
+                buildSettings.push('CODE_SIGNING_REQUIRED=YES');
+            } else {
+                buildSettings.push('CODE_SIGNING_REQUIRED=NO');
+            }
+        }    
+        if (codeSignEntitlements !== undefined) {
+            buildSettings.push('CODE_SIGN_ENTITLEMENTS=YES');
+        }    
+        if (codeSigningAllowed !== undefined) {
+            if (codeSigningAllowed === "true") {
+                buildSettings.push('CODE_SIGNING_ALLOWED=YES');
+            } else {
+                buildSettings.push('CODE_SIGNING_ALLOWED=NO');
+            }
+        }    
+    }
+
+    if (developmentTeam !== "") {
+        buildSettings.push(`DEVELOPMENT_TEAM=${developmentTeam}`);
+    }
+
+    console.log("EXECUTING:", 'xcodebuild', [...options, 'test', ...testOptions, ...buildSettings]);
+
+    const xcodebuild = execa('xcodebuild', [...options, 'test', ...testOptions, ...buildSettings], {
         reject: false,
         env: {"NSUnbufferedIO": "YES"},
     });
@@ -121,7 +183,11 @@ const parseConfiguration = async () => {
         sdk: core.getInput("sdk"),
         arch: core.getInput("arch"),
         destination: core.getInput("destination"),
-        codeSignIdentity: core.getInput('code-sign-identity'),
+        disableCodeSigning: getOptionalBooleanInput('disable-code-signing'),
+        codeSignIdentity: getOptionalInput('CODE_SIGN_IDENTITY'),
+        codeSigningRequired: getOptionalYesNoInput('CODE_SIGNING_REQUIRED'),
+        codeSignEntitlements: getOptionalInput('CODE_SIGN_ENTITLEMENTS'),
+        codeSigningAllowed: getOptionalYesNoInput('CODE_SIGNING_ALLOWED'),
         developmentTeam: core.getInput('development-team'),
         constraints: parseConstraints(core.getInput('constraints')),
         language: "",
