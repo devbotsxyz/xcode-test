@@ -48,6 +48,10 @@ inputs:
     description: 'Architecture'
     required: false
 
+  clean:
+    description: 'Clean the project before testing'
+    default: false
+
   disable-code-signing:
     description: 'Completely disable code signing. Equivalent to CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGN_ENTITLEMENTS="" CODE_SIGNING_ALLOWED=NO'
     required: false

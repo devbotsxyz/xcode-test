@@ -77,7 +77,7 @@ const getProjectInfo = async ({workspace, project}) => {
 };
 
 
-const testProject = async ({workspace, project, scheme, configuration, sdk, arch, destination, disableCodeSigning, codeSignIdentity, codeSigningRequired, codeSignEntitlements, codeSigningAllowed, developmentTeam, constraints, language, region, resultBundlePath}) => {
+const testProject = async ({workspace, project, scheme, configuration, sdk, arch, destination, disableCodeSigning, codeSignIdentity, codeSigningRequired, codeSignEntitlements, codeSigningAllowed, developmentTeam, constraints, language, region, clean, resultBundlePath}) => {
     let options = []
     if (workspace != "") {
         options.push("-workspace", workspace);
@@ -157,9 +157,15 @@ const testProject = async ({workspace, project, scheme, configuration, sdk, arch
         buildSettings.push(`DEVELOPMENT_TEAM=${developmentTeam}`);
     }
 
-    console.log("EXECUTING:", 'xcodebuild', [...options, 'test', ...testOptions, ...buildSettings]);
+    let command = ['test']
+    if (clean === "true") {
+        command = ['clean', ...command]
+    }
 
-    const xcodebuild = execa('xcodebuild', [...options, 'test', ...testOptions, ...buildSettings], {
+
+    console.log("EXECUTING:", 'xcodebuild', [...options, ...command, ...testOptions, ...buildSettings]);
+
+    const xcodebuild = execa('xcodebuild', [...options, ...command, ...testOptions, ...buildSettings], {
         reject: false,
         env: {"NSUnbufferedIO": "YES"},
     });
@@ -183,6 +189,7 @@ const parseConfiguration = async () => {
         sdk: core.getInput("sdk"),
         arch: core.getInput("arch"),
         destination: core.getInput("destination"),
+        clean: getOptionalBooleanInput("clean"),
         disableCodeSigning: getOptionalBooleanInput('disable-code-signing'),
         codeSignIdentity: getOptionalInput('CODE_SIGN_IDENTITY'),
         codeSigningRequired: getOptionalYesNoInput('CODE_SIGNING_REQUIRED'),
