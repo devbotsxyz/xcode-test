@@ -170,6 +170,7 @@ const core = __webpack_require__(2186);
 const artifact = __webpack_require__(2605);
 const execa = __webpack_require__(5447);
 
+const { getOptionalInput, getOptionalBooleanInput, getOptionalYesNoInput } = __webpack_require__(2449);
 const parseConstraints = __webpack_require__(1307);
 const { parseDestination, encodeDestinationOption } = __webpack_require__(7020);
 
@@ -190,7 +191,7 @@ const getProjectInfo = async ({workspace, project}) => {
 };
 
 
-const testProject = async ({workspace, project, scheme, configuration, sdk, arch, destination, codeSignIdentity, developmentTeam, constraints, language, region, resultBundlePath}) => {
+const testProject = async ({workspace, project, scheme, configuration, sdk, arch, destination, disableCodeSigning, codeSignIdentity, codeSigningRequired, codeSignEntitlements, codeSigningAllowed, developmentTeam, constraints, language, region, clean, resultBundlePath}) => {
     let options = []
     if (workspace != "") {
         options.push("-workspace", workspace);
@@ -214,15 +215,10 @@ const testProject = async ({workspace, project, scheme, configuration, sdk, arch
         options.push("-arch", arch);
     }
 
-    let buildOptions = []
-    if (codeSignIdentity !== "") {
-        buildOptions.push(`CODE_SIGN_IDENTITY=${codeSignIdentity}`);
-    }
-    if (developmentTeam !== "") {
-        buildOptions.push(`DEVELOPMENT_TEAM=${developmentTeam}`);
-    }
+    // Test Specific Options
 
     let testOptions = []
+
     if (constraints !== "") {
         testOptions = [...testOptions, ...constraints];
     }
@@ -235,13 +231,46 @@ const testProject = async ({workspace, project, scheme, configuration, sdk, arch
         testOptions = [...testOptions, '-testRegion', region];
     }
 
-    if (resultBundlePath !== "") {
+    if (resultBundlePath !== undefined) {
         testOptions = [...testOptions, '-resultBundlePath', resultBundlePath];
     }
 
-    console.log("EXECUTING:", 'xcodebuild', [...options, 'build', ...buildOptions]);
+    // Build Settings
 
-    const xcodebuild = execa('xcodebuild', [...options, 'test', ...testOptions, ...buildOptions], {
+    let buildSettings = []
+
+    if (disableCodeSigning === true) {
+        buildSettings.push('CODE_SIGN_IDENTITY=""');
+        buildSettings.push('CODE_SIGNING_REQUIRED="NO"');
+        buildSettings.push('CODE_SIGN_ENTITLEMENTS=""');
+        buildSettings.push('CODE_SIGNING_ALLOWED="NO"');
+    } else {
+        if (codeSignIdentity !== undefined) {
+            buildSettings.push(`CODE_SIGN_IDENTITY=${codeSignIdentity}`);
+        }
+        if (codeSigningRequired !== undefined) {
+            buildSettings.push(`CODE_SIGNING_REQUIRED=${codeSigningRequired ? 'YES' : 'NO'}`);
+        }
+        if (codeSignEntitlements !== undefined) {
+            buildSettings.push(`CODE_SIGN_ENTITLEMENTS=${codeSignEntitlements}`);
+        }
+        if (codeSigningAllowed !== undefined) {
+            buildSettings.push(`CODE_SIGNING_ALLOWED=${codeSigningAllowed ? 'YES' : 'NO'}`);
+        }
+    }
+
+    if (developmentTeam !== undefined) {
+        buildSettings.push(`DEVELOPMENT_TEAM=${developmentTeam}`);
+    }
+
+    let command = ['test']
+    if (clean === true) {
+        command = ['clean', ...command]
+    }
+
+    console.log("EXECUTING:", 'xcodebuild', [...options, ...command, ...testOptions, ...buildSettings]);
+
+    const xcodebuild = execa('xcodebuild', [...options, ...command, ...testOptions, ...buildSettings], {
         reject: false,
         env: {"NSUnbufferedIO": "YES"},
     });
@@ -265,13 +294,18 @@ const parseConfiguration = async () => {
         sdk: core.getInput("sdk"),
         arch: core.getInput("arch"),
         destination: core.getInput("destination"),
-        codeSignIdentity: core.getInput('code-sign-identity'),
-        developmentTeam: core.getInput('development-team'),
+        clean: getOptionalBooleanInput("clean"),
+        disableCodeSigning: getOptionalBooleanInput('disable-code-signing'),
+        codeSignIdentity: getOptionalInput('CODE_SIGN_IDENTITY'),
+        codeSigningRequired: getOptionalYesNoInput('CODE_SIGNING_REQUIRED'),
+        codeSignEntitlements: getOptionalInput('CODE_SIGN_ENTITLEMENTS'),
+        codeSigningAllowed: getOptionalYesNoInput('CODE_SIGNING_ALLOWED'),
+        developmentTeam: getOptionalInput('development-team'),
         constraints: parseConstraints(core.getInput('constraints')),
         language: "",
         region: "",
-        resultBundlePath: core.getInput("result-bundle-path"),
-        resultBundleName: core.getInput("result-bundle-name"),
+        resultBundlePath: getOptionalInput("result-bundle-path"),
+        resultBundleName: getOptionalInput("result-bundle-name"),
     };
 
     if (configuration.destination !== "") {
@@ -2951,6 +2985,49 @@ function checkBypass(reqUrl) {
 }
 exports.checkBypass = checkBypass;
 
+
+/***/ }),
+
+/***/ 2449:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getOptionalYesNoInput = exports.getOptionalBooleanInput = exports.getOptionalInput = void 0;
+function getOptionalInput(name) {
+    const val = process.env[`INPUT_${name.replace(/ /g, '_').toUpperCase()}`];
+    if (val !== undefined && val !== '<<undefined>>') {
+        return val.trim();
+    }
+    return undefined;
+}
+exports.getOptionalInput = getOptionalInput;
+function getOptionalBooleanInput(name) {
+    let value = getOptionalInput(name);
+    if (value !== undefined) {
+        value = value.toLowerCase();
+        if (value !== 'true' && value !== 'false') {
+            throw new Error(`Optional input <${name}> only accepts true or false. Got <${value}>.`);
+        }
+        return value === 'true';
+    }
+    return undefined;
+}
+exports.getOptionalBooleanInput = getOptionalBooleanInput;
+function getOptionalYesNoInput(name) {
+    let value = getOptionalInput(name);
+    if (value !== undefined) {
+        value = value.toUpperCase();
+        if (value !== 'YES' && value !== 'NO') {
+            throw new Error(`Optional input <${name}> only accepts yes or no. Got <${value}>.`);
+        }
+        return value === 'YES';
+    }
+    return undefined;
+}
+exports.getOptionalYesNoInput = getOptionalYesNoInput;
+//# sourceMappingURL=inputs.js.map
 
 /***/ }),
 
