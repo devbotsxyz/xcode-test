@@ -29,24 +29,31 @@ inputs:
   workspace:
     description: 'Workspace'
     required: false
+    default: "<<undefined>>"
   project:
     description: 'Project'
     required: false
+    default: "<<undefined>>"
   scheme:
     description: 'Scheme'
     required: false
+    default: "<<undefined>>"
   configuration:
     description: 'Configuration'
     required: false
+    default: "<<undefined>>"
   destination:
     description: 'Destination'
     required: false
+    default: "<<undefined>>"
   sdk:
     description: 'SDK'
     required: false
+    default: "<<undefined>>"
   arch:
     description: 'Architecture'
     required: false
+    default: "<<undefined>>"
 
   clean:
     description: 'Clean the project before testing'
@@ -81,6 +88,7 @@ inputs:
   result-bundle-path:
     description: "Path of the .xcresult bundle"
     required: false
+    default: "<<undefined>>"
   result-bundle-name:
     description: "Name of uploaded .xcresult artifact"
     required: false
@@ -89,15 +97,19 @@ inputs:
   constraints:
     description: 'What tests to run or skip'
     required: false
+    default: "<<undefined>>"
   region:
     description: 'The ISO 3166-1 region in which to run the tests'
     required: false
+    default: "<<undefined>>"
   language:
     description: 'The ISO 639-1 language in which to run the tests'
     required: false
+    default: "<<undefined>>"
   locale:
     description: 'The locale identifier ([language]_[region]) in which to run the tests'
     required: false
+    default: "<<undefined>>"
 
 outputs:
   result-bundle-path:
