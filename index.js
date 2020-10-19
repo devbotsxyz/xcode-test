@@ -26,39 +26,9 @@ const core = require('@actions/core');
 const artifact = require('@actions/artifact');
 const execa = require('execa');
 
+const { getOptionalInput, getOptionalBooleanInput, getOptionalYesNoInput } = require('@devbotsxyz/inputs');
 const parseConstraints = require('./constraints');
 const { parseDestination, encodeDestinationOption } = require('./destinations');
-
-
-// TODO This also lives in xcode-build - time to refactor into a package
-const getOptionalInput = (name) => {
-    const val = process.env[`INPUT_${name.replace(/ /g, '_').toUpperCase()}`];
-    if (val !== undefined && val !== "" && val !== "<<undefined>>") {
-        return val.trim();
-    }
-};
-
-const getOptionalBooleanInput = (name) => {
-    let value = getOptionalInput(name);
-    if (value !== undefined) {
-        value = value.toLowerCase();
-        if (value !== 'true' && value !== 'false') {
-            throw new Error(`Optional input <${name}> only accepts true or false. Got <${value}>.`);
-        }
-        return value;
-    }
-};
-
-const getOptionalYesNoInput = (name) => {
-    let value = getOptionalInput(name);
-    if (value !== undefined) {
-        value = value.toUpperCase();
-        if (value !== 'YES' && value !== 'NO') {
-            throw new Error(`Optional input <${name}> only accepts yes or no. Got <${value}>.`);
-        }
-        return value;
-    }
-};
 
 
 const getProjectInfo = async ({workspace, project}) => {
@@ -117,51 +87,42 @@ const testProject = async ({workspace, project, scheme, configuration, sdk, arch
         testOptions = [...testOptions, '-testRegion', region];
     }
 
-    if (resultBundlePath !== "") {
+    if (resultBundlePath !== undefined) {
         testOptions = [...testOptions, '-resultBundlePath', resultBundlePath];
     }
-    
+
     // Build Settings
 
     let buildSettings = []
 
-    if (disableCodeSigning === "true") {
+    if (disableCodeSigning === true) {
         buildSettings.push('CODE_SIGN_IDENTITY=""');
         buildSettings.push('CODE_SIGNING_REQUIRED="NO"');
         buildSettings.push('CODE_SIGN_ENTITLEMENTS=""');
-        buildSettings.push('CODE_SIGNING_ALLOWED="NO"');    
+        buildSettings.push('CODE_SIGNING_ALLOWED="NO"');
     } else {
         if (codeSignIdentity !== undefined) {
             buildSettings.push(`CODE_SIGN_IDENTITY=${codeSignIdentity}`);
         }
         if (codeSigningRequired !== undefined) {
-            if (codeSigningRequired === "true") {
-                buildSettings.push('CODE_SIGNING_REQUIRED=YES');
-            } else {
-                buildSettings.push('CODE_SIGNING_REQUIRED=NO');
-            }
-        }    
+            buildSettings.push(`CODE_SIGNING_REQUIRED=${codeSigningRequired ? 'YES' : 'NO'}`);
+        }
         if (codeSignEntitlements !== undefined) {
-            buildSettings.push('CODE_SIGN_ENTITLEMENTS=YES');
-        }    
+            buildSettings.push(`CODE_SIGN_ENTITLEMENTS=${codeSignEntitlements}`);
+        }
         if (codeSigningAllowed !== undefined) {
-            if (codeSigningAllowed === "true") {
-                buildSettings.push('CODE_SIGNING_ALLOWED=YES');
-            } else {
-                buildSettings.push('CODE_SIGNING_ALLOWED=NO');
-            }
-        }    
+            buildSettings.push(`CODE_SIGNING_ALLOWED=${codeSigningAllowed ? 'YES' : 'NO'}`);
+        }
     }
 
-    if (developmentTeam !== "") {
+    if (developmentTeam !== undefined) {
         buildSettings.push(`DEVELOPMENT_TEAM=${developmentTeam}`);
     }
 
     let command = ['test']
-    if (clean === "true") {
+    if (clean === true) {
         command = ['clean', ...command]
     }
-
 
     console.log("EXECUTING:", 'xcodebuild', [...options, ...command, ...testOptions, ...buildSettings]);
 
@@ -195,12 +156,12 @@ const parseConfiguration = async () => {
         codeSigningRequired: getOptionalYesNoInput('CODE_SIGNING_REQUIRED'),
         codeSignEntitlements: getOptionalInput('CODE_SIGN_ENTITLEMENTS'),
         codeSigningAllowed: getOptionalYesNoInput('CODE_SIGNING_ALLOWED'),
-        developmentTeam: core.getInput('development-team'),
+        developmentTeam: getOptionalInput('development-team'),
         constraints: parseConstraints(core.getInput('constraints')),
         language: "",
         region: "",
-        resultBundlePath: core.getInput("result-bundle-path"),
-        resultBundleName: core.getInput("result-bundle-name"),
+        resultBundlePath: getOptionalInput("result-bundle-path"),
+        resultBundleName: getOptionalInput("result-bundle-name"),
     };
 
     if (configuration.destination !== "") {

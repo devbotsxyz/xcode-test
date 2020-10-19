@@ -27,6 +27,7 @@
   "dependencies": {
     "@actions/artifact": "^0.4.0",
     "@actions/core": "^1.2.5",
+    "@devbotsxyz/inputs": "0.0.1",
     "execa": "^4.0.3"
   },
   "devDependencies": {
