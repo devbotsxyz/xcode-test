@@ -19,8 +19,9 @@
 // SOFTWARE.
 
 
+// TODO Move to toolkit, rewrite in TypeScript.
 const parseConstraints = (s) => {
-    if (s === "") {
+    if (s === undefined || s === "") {
         return [];
     }
 
