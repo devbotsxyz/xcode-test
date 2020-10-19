@@ -72,14 +72,11 @@ inputs:
     description: ''
     required: false
     default: "<<undefined>>"
-  DEVELOPMENT_TEAM:
-    description: 'Development team ID'
-    required: false
-    default: "<<undefined>>"
 
   DEVELOPMENT_TEAM:
     description: 'Development team ID'
     required: false
+    default: "<<undefined>>"
 
   result-bundle-path:
     description: "Path of the .xcresult bundle"
