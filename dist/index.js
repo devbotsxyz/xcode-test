@@ -177,10 +177,10 @@ const { parseDestination, encodeDestinationOption } = __webpack_require__(7020);
 
 const getProjectInfo = async ({workspace, project}) => {
     const options = [];
-    if (workspace != "") {
+    if (workspace != undefined) {
         options.push("-workspace", workspace);
     }
-    if (project != "") {
+    if (project != undefined) {
         options.push("-project", project);
     }
 
@@ -193,25 +193,25 @@ const getProjectInfo = async ({workspace, project}) => {
 
 const testProject = async ({workspace, project, scheme, configuration, sdk, arch, destination, disableCodeSigning, codeSignIdentity, codeSigningRequired, codeSignEntitlements, codeSigningAllowed, developmentTeam, constraints, language, region, clean, resultBundlePath}) => {
     let options = []
-    if (workspace != "") {
+    if (workspace !== undefined) {
         options.push("-workspace", workspace);
     }
-    if (project != "") {
+    if (project !== undefined) {
         options.push("-project", project);
     }
-    if (scheme != "") {
+    if (scheme !== undefined) {
         options.push("-scheme", scheme);
     }
-    if (configuration != "") {
+    if (configuration !== undefined) {
         options.push("-configuration", configuration);
     }
-    if (destination != "") {
+    if (destination !== undefined) {
         options.push("-destination", encodeDestinationOption(destination) );
     }
-    if (sdk != "") {
+    if (sdk !== undefined) {
         options.push("-sdk", sdk);
     }
-    if (arch != "") {
+    if (arch !== undefined) {
         options.push("-arch", arch);
     }
 
@@ -219,15 +219,15 @@ const testProject = async ({workspace, project, scheme, configuration, sdk, arch
 
     let testOptions = []
 
-    if (constraints !== "") {
+    if (constraints !== undefined) {
         testOptions = [...testOptions, ...constraints];
     }
 
-    if (language !== "") {
+    if (language !== undefined) {
         testOptions = [...testOptions, '-testLanguage', language];
     }
 
-    if (region !== "") {
+    if (region !== undefined) {
         testOptions = [...testOptions, '-testRegion', region];
     }
 
@@ -287,13 +287,13 @@ const testProject = async ({workspace, project, scheme, configuration, sdk, arch
 
 const parseConfiguration = async () => {
     const configuration = {
-        workspace: core.getInput("workspace"),
-        project: core.getInput("project"),
-        scheme: core.getInput("scheme"),
-        configuration: core.getInput("configuration"),
-        sdk: core.getInput("sdk"),
-        arch: core.getInput("arch"),
-        destination: core.getInput("destination"),
+        workspace: getOptionalInput("workspace"),
+        project: getOptionalInput("project"),
+        scheme: getOptionalInput("scheme"),
+        configuration: getOptionalInput("configuration"),
+        sdk: getOptionalInput("sdk"),
+        arch: getOptionalInput("arch"),
+        destination: getOptionalInput("destination"),
         clean: getOptionalBooleanInput("clean"),
         disableCodeSigning: getOptionalBooleanInput('disable-code-signing'),
         codeSignIdentity: getOptionalInput('CODE_SIGN_IDENTITY'),
@@ -301,32 +301,30 @@ const parseConfiguration = async () => {
         codeSignEntitlements: getOptionalInput('CODE_SIGN_ENTITLEMENTS'),
         codeSigningAllowed: getOptionalYesNoInput('CODE_SIGNING_ALLOWED'),
         developmentTeam: getOptionalInput('development-team'),
-        constraints: parseConstraints(core.getInput('constraints')),
-        language: "",
-        region: "",
+        constraints: parseConstraints(getOptionalInput('constraints')),
+        language: getOptionalInput('language'),
+        region: getOptionalInput('region'),
         resultBundlePath: getOptionalInput("result-bundle-path"),
         resultBundleName: getOptionalInput("result-bundle-name"),
     };
 
-    if (configuration.destination !== "") {
+    if (configuration.destination !== undefined) {
         configuration.destination = parseDestination(configuration.destination);
     }
 
-    if (configuration.scheme === "") {
+    if (configuration.scheme === undefined) {
         const projectInfo = await getProjectInfo(configuration);
-        if (configuration.scheme === "") {
+        if (configuration.scheme === undefined) {
             configuration.scheme = projectInfo.project.schemes[0];
         }
     }
 
-    const locale = core.getInput('locale');
-    if (locale !== "") {
+    // Locale overrides language and region
+    const locale = getOptionalInput('locale');
+    if (locale !== undefined) {
         const [language, region] = locale.split("_");
         configuration.language = language;
         configuration.region = region;
-    } else {
-        configuration.language = core.getInput('language');
-        configuration.region = core.getInput('region');
     }
 
     // TODO Validate the resultBundlePath
@@ -375,7 +373,7 @@ const main = async () => {
         await testProject(configuration);
 
         // Upload the results bundle as an artifact
-        if (configuration.resultBundlePath !== "" && fs.existsSync(configuration.resultBundlePath)) {
+        if (configuration.resultBundlePath !== undefined && fs.existsSync(configuration.resultBundlePath)) {
             const resultBundleArchivePath = await archiveResultBundle(configuration.resultBundlePath);
             await uploadResultBundleArtifact(resultBundleArchivePath, configuration.resultBundleName);
         }
